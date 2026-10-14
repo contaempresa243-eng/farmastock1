@@ -1315,10 +1315,29 @@ function escaparHTML(texto) {
         // Função central para carregar a aplicação após autenticação
         async function iniciarAplicacao(firebaseUser) {
             try {
-                const doc = await db.collection('utilizadores').doc(firebaseUser.uid).get();
-                if (!doc.exists) throw new Error("Utilizador não encontrado na base de dados. UID: " + firebaseUser.uid);
-                
-                utilizadorAtual = { id: firebaseUser.uid, ...doc.data() };
+                let doc = await db.collection('utilizadores').doc(firebaseUser.uid).get();
+
+                // Fallback: se o ID do documento não coincidir com o UID, procurar pelo email
+                if (!doc.exists && firebaseUser.email) {
+                    const porEmail = await db.collection('utilizadores')
+                        .where('email', '==', firebaseUser.email)
+                        .limit(1)
+                        .get();
+                    if (!porEmail.empty) {
+                        doc = porEmail.docs[0];
+                        console.warn("Utilizador encontrado pelo email (ID do documento difere do UID).");
+                    }
+                }
+
+                if (!doc.exists) {
+                    throw new Error(
+                        "Utilizador não encontrado na base de dados.\n" +
+                        "UID: " + firebaseUser.uid + "\n" +
+                        "Email: " + (firebaseUser.email || '—')
+                    );
+                }
+
+                utilizadorAtual = { id: doc.id, ...doc.data() };
 console.log("📦 Dados do utilizador:", utilizadorAtual);
 
 // Defesa: usar fallback se faltar nome ou tipo
