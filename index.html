@@ -1329,27 +1329,25 @@ function escaparHTML(texto) {
                     }
                 }
 
+                // 🛠️ Primeiro acesso: se a coleção 'utilizadores' estiver completamente vazia,
+                // a primeira conta a entrar cria o seu próprio documento como ADMIN.
+                // Depois disto a coleção deixa de estar vazia e esta regra nunca mais se aplica.
                 if (!doc.exists) {
-                    // 🔎 DIAGNÓSTICO TEMPORÁRIO: mostra o que a app consegue ver na coleção
-                    let diag = "PROJETO: " + firebaseConfig.projectId + "\n" +
-                               "UID da conta: " + firebaseUser.uid + " (" + firebaseUser.uid.length + " car.)\n" +
-                               "Email da conta: " + JSON.stringify(firebaseUser.email) + "\n\n";
-                    try {
-                        const todos = await db.collection('utilizadores').get();
-                        diag += "Documentos em 'utilizadores': " + todos.size + "\n";
-                        todos.forEach(d => {
-                            const x = d.data();
-                            diag += "\n• ID: " + d.id + " (" + d.id.length + " car.)\n" +
-                                    "  ID igual ao UID? " + (d.id === firebaseUser.uid ? "SIM" : "NÃO") + "\n" +
-                                    "  email: " + JSON.stringify(x.email) + "\n" +
-                                    "  email igual? " + (x.email === firebaseUser.email ? "SIM" : "NÃO") + "\n" +
-                                    "  tipo: " + JSON.stringify(x.tipo) + "\n";
+                    const amostra = await db.collection('utilizadores').limit(1).get();
+                    if (amostra.empty) {
+                        const emailConta = firebaseUser.email || '';
+                        await db.collection('utilizadores').doc(firebaseUser.uid).set({
+                            nome: firebaseUser.displayName || emailConta.split('@')[0] || 'Administrador',
+                            email: emailConta,
+                            tipo: 'admin',
+                            criadoEm: new Date().toISOString()
                         });
-                    } catch (e) {
-                        diag += "Erro a ler a coleção: " + e.message;
+                        doc = await db.collection('utilizadores').doc(firebaseUser.uid).get();
+                        console.warn("Primeiro acesso: documento de administrador criado automaticamente.");
                     }
-                    confirm("🔎 DIAGNÓSTICO\n\n" + diag);
+                }
 
+                if (!doc.exists) {
                     throw new Error(
                         "Utilizador não encontrado na base de dados.\n" +
                         "UID: " + firebaseUser.uid + "\n" +
