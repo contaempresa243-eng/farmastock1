@@ -1,8 +1,9 @@
-const CACHE_NAME = 'farmastock-v5';
+const CACHE_NAME = 'farmastock-v10';
 const assetsToCache = [
   './',
   './index.html',
   './manifest.json',
+  './firebase-config.js',
   './icon-192.png',
   './icon-512.png'
 ];
